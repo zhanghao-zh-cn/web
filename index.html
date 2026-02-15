@@ -1,346 +1,358 @@
-<!--
-
-Chess Html
-
-Copyright (C) 2025 - Fatih (https://github.com/99fk)
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
--->
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8" />
-  <title>Chess</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+  <title>五子棋 </title>
   <style>
-    html, body {
+    * {
       margin: 0;
       padding: 0;
-      background: #222;
-      color: #fff;
-      font-family: sans-serif;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent; /* 去除点击高亮 */
+    }
+    body {
       display: flex;
-      flex-direction: column;
+      justify-content: center;
       align-items: center;
-      justify-content: flex-start;
-      height: 100vh;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #f5f7fa, #e4edf9);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      padding: 12px;
       overflow: hidden;
     }
-
-    h1 { margin: 10px; }
-
-    #chessboard {
-      width: 95vmin;
-      height: 95vmin;
-      display: grid;
-      grid-template-columns: repeat(8, 1fr);
-      grid-template-rows: repeat(8, 1fr);
-      border: 4px solid #fff;
-      aspect-ratio: 1;
-    }
-
-    .square {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 4.5vmin;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .white { background: #eee; color: #000; }
-    .black { background: #444; color: #fff; }
-    .highlight { outline: 3px solid yellow; }
-
-    .white-piece {
-      background-color: #fff;
-      color: #000;
-      border-radius: 50%;
-      padding: 2px 6px;
-      box-shadow: 0 0 2px #000;
-    }
-
-    .black-piece {
-      background-color: #000;
-      color: #fff;
-      border-radius: 50%;
-      padding: 2px 6px;
-      box-shadow: 0 0 2px #fff;
-    }
-
-    #volumeSlider {
-      width: 100px;
-    }
-
-    #status {
-      margin-top: 10px;
+    .game-container {
       text-align: center;
-      font-size: 1rem;
+      background: white;
+      padding: 20px;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      max-width: 95vw;
+      width: fit-content;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 12px;
+      font-size: 24px;
+      letter-spacing: 1px;
+    }
+    #info {
+      margin: 12px 0;
+      font-size: 18px;
+      font-weight: bold;
+      color: #2c3e50;
+      min-height: 26px;
+    }
+    #board-container {
+      position: relative;
+      display: inline-block;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+      touch-action: none; /* 禁用浏览器默认手势（如双指缩放） */
+    }
+    canvas {
+      display: block;
+      background-color: #e6c27d;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(0,0,0,0.03) 0%, transparent 50%),
+        radial-gradient(circle at 90% 80%, rgba(0,0,0,0.02) 0%, transparent 50%);
     }
 
-    .volume-control {
-	  position: absolute;
-      z-index: 1000;
-      left:0px;
+    /* 胜利遮罩 */
+    #win-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255,255,255,0.9);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      border-radius: 12px;
     }
-    .row {
-     display: flex;
-     justify-content: space-between;
-     align-items: center;
-     width: 100%; /* oder eine feste Breite */
-     padding: 0 10px;
+    #win-overlay h2 {
+      font-size: 24px;
+      color: #e74c3c;
+      margin-bottom: 15px;
+      padding: 0 10px;
+    }
+    #restart-btn {
+      padding: 10px 24px;
+      font-size: 16px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-weight: bold;
+    }
+    #restart-btn:active {
+      background: #2980b9;
+      transform: scale(0.98);
+    }
+
+    @media (max-width: 500px) {
+      h1 { font-size: 20px; }
+      #info { font-size: 16px; }
+      #restart-btn { padding: 10px 20px; font-size: 16px; }
     }
   </style>
 </head>
 <body>
-  <div id="chessboard"></div>
-<div class="row">
-  <div>
-  <div id="volume-control">
-    🔊 Volume: <input type="range" min="0" max="1" step="0.05" value="0.5" id="volumeSlider">
+  <div class="game-container">
+    <h1>五子棋</h1>
+    <div id="info">黑子</div>
+    <div id="board-container">
+      <canvas id="board" width="600" height="600"></canvas>
+      <div id="win-overlay">
+        <h2 id="winner-text">黑子获胜！</h2>
+        <button id="restart-btn">重新开始</button>
+      </div>
+    </div>
   </div>
-  </div>
-  <div>
-  <p id="status"> </p>
-  </div>
-  <div>
 
-  </div>
-</div>
-  
   <script>
+    // 高 DPI 屏幕适配（如 iPhone、安卓高清屏）
+    const canvas = document.getElementById('board');
+    const dpr = window.devicePixelRatio || 1;
+    const displayWidth = Math.min(600, window.innerWidth * 0.95);
+    const displayHeight = displayWidth;
 
-    const pieces = {
-      r: "♜", n: "♞", b: "♝", q: "♛", k: "♚", p: "♟",
-      R: "♖", N: "♘", B: "♗", Q: "♕", K: "♔", P: "♙"
-    };
-	let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    let volume = 0.5;
-    let board = [
-      "rnbqkbnr".split(""), "pppppppp".split(""),
-      " ".repeat(8).split(""), " ".repeat(8).split(""),
-      " ".repeat(8).split(""), " ".repeat(8).split(""),
-      "PPPPPPPP".split(""), "RNBQKBNR".split("")
-    ];
+    canvas.style.width = displayWidth + 'px';
+    canvas.style.height = displayHeight + 'px';
+    const logicalSize = 600; // 逻辑尺寸（15x40）
+    canvas.width = logicalSize * dpr;
+    canvas.height = logicalSize * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
 
-    let moved = {}; // merkt sich, ob König oder Turm bewegt wurden
-    const chessboard = document.getElementById("chessboard");
-    const status = document.getElementById("status");
-    let selected = null;
-    let whiteTurn = true;
+    const SIZE = 15;
+    const CELL_SIZE = 40; // 逻辑像素
+    const RADIUS = CELL_SIZE / 2 - 3;
 
-    function renderBoard() {
-      chessboard.innerHTML = "";
-      for (let y = 0; y < 8; y++) {
-        for (let x = 0; x < 8; x++) {
-          const square = document.createElement("div");
-          square.className = "square " + ((x + y) % 2 === 0 ? "white" : "black");
-          square.dataset.x = x;
-          square.dataset.y = y;
-          const piece = board[y][x];
-          if (piece !== " ") {
-            const span = document.createElement("span");
-            span.textContent = pieces[piece];
-            span.className = (piece === piece.toUpperCase()) ? "white-piece" : "black-piece";
-            square.appendChild(span);
-          }
-          if (selected && selected.x == x && selected.y == y) square.classList.add("highlight");
-          square.onclick = () => handleClick(x, y);
-          chessboard.appendChild(square);
+    const info = document.getElementById('info');
+    const winOverlay = document.getElementById('win-overlay');
+    const winnerText = document.getElementById('winner-text');
+    const restartBtn = document.getElementById('restart-btn');
+
+    let board = Array(SIZE).fill().map(() => Array(SIZE).fill(0));
+    let currentPlayer = 1;
+    let gameOver = false;
+    let hoverX = -1, hoverY = -1;
+
+    // 获取触摸/鼠标位置（统一处理）
+    function getGridPos(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const offsetX = clientX - rect.left;
+      const offsetY = clientY - rect.top;
+      // 转换为逻辑坐标（非 DPR 缩放后）
+      const x = Math.round((offsetX / rect.width) * logicalSize / CELL_SIZE);
+      const y = Math.round((offsetY / rect.height) * logicalSize / CELL_SIZE);
+      return { x, y };
+    }
+
+    function drawBoard() {
+      ctx.clearRect(0, 0, logicalSize, logicalSize);
+
+      // 网格
+      ctx.strokeStyle = '#8B4513';
+      ctx.lineWidth = 1.2;
+      for (let i = 0; i < SIZE; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, i * CELL_SIZE);
+        ctx.lineTo(logicalSize - 1, i * CELL_SIZE);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(i * CELL_SIZE, 0);
+        ctx.lineTo(i * CELL_SIZE, logicalSize - 1);
+        ctx.stroke();
+      }
+
+      // 星位
+      const stars = [3, 7, 11];
+      ctx.fillStyle = '#000';
+      for (let y of stars) {
+        for (let x of stars) {
+          ctx.beginPath();
+          ctx.arc(x * CELL_SIZE, y * CELL_SIZE, 2, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
-      const inCheck = isCheck(whiteTurn);
-      const moves = allLegalMoves(whiteTurn);
-      if (inCheck && moves.length === 0) {
-        status.textContent = (whiteTurn ? "White" : "Black") + " is checkmated!";
-      } else if (!inCheck && moves.length === 0) {
-        status.textContent = "Patt!";
-      } else if (inCheck) {
-        status.textContent = (whiteTurn ? "White" : "Black") + "  is in check!";
-      } else {
-        status.textContent = (whiteTurn ? "White" : "Black") + " to move.";
-      }
-    }
 
-    function isWhite(p) { return p === p.toUpperCase(); }
-
-    function isLegalMove(fromX, fromY, toX, toY) {
-      const p = board[fromY][fromX];
-      const target = board[toY][toX];
-      const dx = toX - fromX, dy = toY - fromY;
-      const absDx = Math.abs(dx), absDy = Math.abs(dy);
-      if (!p || (target !== " " && isWhite(p) === isWhite(target))) return false;
-      const dir = isWhite(p) ? -1 : 1;
-      const startRow = isWhite(p) ? 6 : 1;
-
-      switch (p.toLowerCase()) {
-        case "p":
-          if (dx === 0 && target === " ") {
-            if (dy === dir) return true;
-            if (fromY === startRow && dy === 2 * dir && board[fromY + dir][fromX] === " ") return true;
-          }
-          if (absDx === 1 && dy === dir && target !== " " && isWhite(p) !== isWhite(target)) return true;
-          return false;
-        case "r":
-          if (dx && dy) return false;
-          return pathClear(fromX, fromY, toX, toY);
-        case "n":
-          return (absDx === 2 && absDy === 1) || (absDx === 1 && absDy === 2);
-        case "b":
-          if (absDx !== absDy) return false;
-          return pathClear(fromX, fromY, toX, toY);
-        case "q":
-          if (dx === 0 || dy === 0 || absDx === absDy) return pathClear(fromX, fromY, toX, toY);
-          return false;
-        case "k":
-          if (absDx <= 1 && absDy <= 1) return true;
-          // Rochade
-          if (dy === 0 && (dx === 2 || dx === -2)) {
-            const row = fromY;
-            const side = dx === 2 ? "king" : "queen";
-            return canCastle(row, side);
-          }
-          return false;
-      }
-      return false;
-    }
-
-    function canCastle(row, side) {
-      const color = row === 7 ? "w" : "b";
-      if (moved[color + "k"]) return false;
-      const y = row;
-      if (side === "king") {
-        if (moved[color + "rh"]) return false;
-        if (board[y][5] !== " " || board[y][6] !== " ") return false;
-      } else {
-        if (moved[color + "ra"]) return false;
-        if (board[y][1] !== " " || board[y][2] !== " " || board[y][3] !== " ") return false;
-      }
-      return true;
-    }
-
-    function pathClear(fromX, fromY, toX, toY) {
-      const dx = Math.sign(toX - fromX), dy = Math.sign(toY - fromY);
-      let x = fromX + dx, y = fromY + dy;
-      while (x !== toX || y !== toY) {
-        if (board[y][x] !== " ") return false;
-        x += dx; y += dy;
-      }
-      return true;
-    }
-
-    function isCheck(white) {
-      const k = white ? "K" : "k";
-      let kingX = -1, kingY = -1;
-      for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++)
-        if (board[y][x] === k) { kingX = x; kingY = y; }
-      for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
-        const p = board[y][x];
-        if (p !== " " && isWhite(p) !== white && isLegalMove(x, y, kingX, kingY)) return true;
-      }
-      return false;
-    }
-
-    function allLegalMoves(forWhite) {
-      const moves = [];
-      for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
-        const p = board[y][x];
-        if (p !== " " && isWhite(p) === forWhite) {
-          for (let yy = 0; yy < 8; yy++) for (let xx = 0; xx < 8; xx++) {
-            if (isLegalMove(x, y, xx, yy)) {
-              const save = board.map(r => [...r]);
-              const m = { ...moved };
-              board[yy][xx] = p; board[y][x] = " ";
-              if (!isCheck(forWhite)) moves.push([x, y, xx, yy]);
-              board = save; moved = m;
-            }
-          }
+      // 已落子
+      for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+          if (board[y][x] === 1) drawBlackPiece(x, y, 1);
+          else if (board[y][x] === 2) drawWhitePiece(x, y, 1);
         }
       }
-      return moves;
-    }
 
-    function handleClick(x, y) {
-      const p = board[y][x];
-      if (selected) {
-        const fx = selected.x, fy = selected.y;
-        const piece = board[fy][fx];
-        if (isWhite(piece) !== whiteTurn) {
-          selected = null;
-} else if (isLegalMove(fx, fy, x, y)) {
-  const target = board[y][x]; // <-- NEU
-  const oldBoard = board.map(r => [...r]);
-  const oldMoved = { ...moved };
-  board[y][x] = piece;
-  board[fy][fx] = " ";
-
-  if (target !== " ") {
-    playSound("capture"); // <-- NEU
-  } else {
-    playSound("move");    // <-- NEU
-  }
-          // Rochade
-          if (piece.toLowerCase() === "k" && Math.abs(x - fx) === 2) {
-            const row = fy;
-            if (x > fx) { board[row][5] = board[row][7]; board[row][7] = " "; }
-            else { board[row][3] = board[row][0]; board[row][0] = " "; }
-          }
-          // Umwandlung
-          if (piece.toLowerCase() === "p" && (y === 0 || y === 7)) {
-            board[y][x] = isWhite(piece) ? "Q" : "q";
-          }
-          // Zug speichern
-          if (piece.toLowerCase() === "k") moved[(whiteTurn ? "w" : "b") + "k"] = true;
-          if (piece.toLowerCase() === "r") {
-            if (fx === 0) moved[(whiteTurn ? "w" : "b") + "ra"] = true;
-            if (fx === 7) moved[(whiteTurn ? "w" : "b") + "rh"] = true;
-          }
-          if (!isCheck(whiteTurn)) whiteTurn = !whiteTurn;
-          else { board = oldBoard; moved = oldMoved; }
-          selected = null;
-        } else selected = null;
-      } else if (p !== " " && isWhite(p) === whiteTurn) {
-        selected = { x, y };
+      // 虚影
+      if (!gameOver && hoverX >= 0 && hoverY >= 0 && board[hoverY][hoverX] === 0) {
+        if (currentPlayer === 1) {
+          drawBlackPiece(hoverX, hoverY, 0.35);
+        } else {
+          drawWhitePiece(hoverX, hoverY, 0.45);
+        }
       }
-      renderBoard();
     }
 
-    renderBoard();
+    function drawBlackPiece(x, y, alpha = 1) {
+      const cx = x * CELL_SIZE;
+      const cy = y * CELL_SIZE;
+      ctx.globalAlpha = alpha;
+      const gradient = ctx.createRadialGradient(cx - 5, cy - 5, 1, cx, cy, RADIUS);
+      gradient.addColorStop(0, '#555');
+      gradient.addColorStop(1, '#000');
+      ctx.beginPath();
+      ctx.arc(cx, cy, RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
 
-function playSound(type) {
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  gain.gain.value = volume;
-  if (type === "move") osc.frequency.value = 440;
-  if (type === "capture") osc.frequency.value = 220;
-  if (type === "check") osc.frequency.value = 660;
-  osc.type = "square";
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.1);
-}
+    function drawWhitePiece(x, y, alpha = 1) {
+      const cx = x * CELL_SIZE;
+      const cy = y * CELL_SIZE;
+      ctx.globalAlpha = alpha;
+      const gradient = ctx.createRadialGradient(cx - 5, cy - 5, 1, cx, cy, RADIUS);
+      gradient.addColorStop(0, '#fff');
+      gradient.addColorStop(1, '#ddd');
+      ctx.beginPath();
+      ctx.arc(cx, cy, RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 1;
+      ctx.stroke();
 
-document.getElementById("volumeSlider").addEventListener("input", e => {
-  volume = parseFloat(e.target.value);
-});
+      ctx.beginPath();
+      ctx.arc(cx - RADIUS/3, cy - RADIUS/3, RADIUS/3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.6 * alpha) + ')';
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
 
+    function getWinLine(x, y, player) {
+      const directions = [[1,0],[0,1],[1,1],[1,-1]];
+      for (const [dx, dy] of directions) {
+        let count = 1;
+        let start = {x, y}, end = {x, y};
+        for (let i = 1; i <= 4; i++) {
+          const nx = x + dx * i, ny = y + dy * i;
+          if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE && board[ny][nx] === player) {
+            end = {x: nx, y: ny}; count++;
+          } else break;
+        }
+        for (let i = 1; i <= 4; i++) {
+          const nx = x - dx * i, ny = y - dy * i;
+          if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE && board[ny][nx] === player) {
+            start = {x: nx, y: ny}; count++;
+          } else break;
+        }
+        if (count >= 5) return { start, end };
+      }
+      return null;
+    }
 
-</script>
+    function drawWinLine(start, end) {
+      ctx.strokeStyle = '#e74c3c';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([10, 5]);
+      ctx.beginPath();
+      ctx.moveTo(start.x * CELL_SIZE, start.y * CELL_SIZE);
+      ctx.lineTo(end.x * CELL_SIZE, end.y * CELL_SIZE);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
 
-<script>document.addEventListener("contextmenu",function(e){e.preventDefault();});</script>
+    function resetGame() {
+      board = Array(SIZE).fill().map(() => Array(SIZE).fill(0));
+      currentPlayer = 1;
+      gameOver = false;
+      hoverX = hoverY = -1;
+      winOverlay.style.display = 'none';
+      info.textContent = '黑子';
+      drawBoard();
+    }
+
+    // ===== 统一处理鼠标和触摸事件 =====
+
+    function handleMove(clientX, clientY) {
+      if (gameOver) return;
+      const { x, y } = getGridPos(clientX, clientY);
+      if (x !== hoverX || y !== hoverY) {
+        hoverX = x;
+        hoverY = y;
+        drawBoard();
+      }
+    }
+
+    function handleLeave() {
+      if (!gameOver) {
+        hoverX = hoverY = -1;
+        drawBoard();
+      }
+    }
+
+    function handleClick(clientX, clientY) {
+      if (gameOver) return;
+      const { x, y } = getGridPos(clientX, clientY);
+      if (x < 0 || x >= SIZE || y < 0 || y >= SIZE || board[y][x] !== 0) return;
+
+      board[y][x] = currentPlayer;
+      drawBoard();
+
+      const winLine = getWinLine(x, y, currentPlayer);
+      if (winLine) {
+        drawWinLine(winLine.start, winLine.end);
+        const winner = currentPlayer === 1 ? '黑子' : '白子';
+        winnerText.textContent = `${winner} 赢了！`;
+        winOverlay.style.display = 'flex';
+        info.textContent = '';
+        gameOver = true;
+        return;
+      }
+
+      currentPlayer = 3 - currentPlayer;
+      info.textContent = `${currentPlayer === 1 ? '黑子' : '白子'}`;
+    }
+
+    // 鼠标事件
+    canvas.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+    canvas.addEventListener('mouseleave', handleLeave);
+    canvas.addEventListener('click', (e) => handleClick(e.clientX, e.clientY));
+
+    // 触摸事件
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      handleMove(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      if (e.changedTouches.length > 0) {
+        const touch = e.changedTouches[0];
+        handleClick(touch.clientX, touch.clientY);
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchcancel', handleLeave);
+
+    restartBtn.addEventListener('click', resetGame);
+
+    // 初始绘制
+    drawBoard();
+  </script>
 </body>
 </html>
