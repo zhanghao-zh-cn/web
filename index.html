@@ -2,14 +2,14 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
-  <title>五子棋 </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>五子棋</title>
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent; /* 去除点击高亮 */
+      -webkit-tap-highlight-color: transparent;
     }
     body {
       display: flex;
@@ -58,7 +58,6 @@
         radial-gradient(circle at 90% 80%, rgba(0,0,0,0.02) 0%, transparent 50%);
     }
 
-    /* 胜利遮罩 */
     #win-overlay {
       position: absolute;
       top: 0;
@@ -72,6 +71,10 @@
       align-items: center;
       z-index: 10;
       border-radius: 12px;
+      pointer-events: none;
+    }
+    #win-overlay > * {
+      pointer-events: auto;
     }
     #win-overlay h2 {
       font-size: 24px;
@@ -107,7 +110,7 @@
     <h1>五子棋</h1>
     <div id="info">黑子</div>
     <div id="board-container">
-      <canvas id="board" width="600" height="600"></canvas>
+      <canvas id="board" width="450" height="450"></canvas>
       <div id="win-overlay">
         <h2 id="winner-text">黑子获胜！</h2>
         <button id="restart-btn">重新开始</button>
@@ -116,23 +119,23 @@
   </div>
 
   <script>
-    // 高 DPI 屏幕适配（如 iPhone、安卓高清屏）
     const canvas = document.getElementById('board');
     const dpr = window.devicePixelRatio || 1;
-    const displayWidth = Math.min(600, window.innerWidth * 0.95);
-    const displayHeight = displayWidth;
+    const logicalSize = 450;
+    const SIZE = 15;
+    const PADDING = 15;                // 👈 新增：内边距
+    const BOARD_SPAN = SIZE - 1;       // 14 个间隔
+    const DRAW_SIZE = logicalSize - 2 * PADDING; // 420
+    const CELL_SIZE = DRAW_SIZE / BOARD_SPAN;    // 30
+    const RADIUS = Math.min(CELL_SIZE / 2 - 2, 13);
 
+    const displayWidth = Math.min(logicalSize, window.innerWidth * 0.95);
     canvas.style.width = displayWidth + 'px';
-    canvas.style.height = displayHeight + 'px';
-    const logicalSize = 600; // 逻辑尺寸（15x40）
+    canvas.style.height = displayWidth + 'px';
     canvas.width = logicalSize * dpr;
     canvas.height = logicalSize * dpr;
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
-
-    const SIZE = 15;
-    const CELL_SIZE = 40; // 逻辑像素
-    const RADIUS = CELL_SIZE / 2 - 3;
 
     const info = document.getElementById('info');
     const winOverlay = document.getElementById('win-overlay');
@@ -144,42 +147,47 @@
     let gameOver = false;
     let hoverX = -1, hoverY = -1;
 
-    // 获取触摸/鼠标位置（统一处理）
     function getGridPos(clientX, clientY) {
       const rect = canvas.getBoundingClientRect();
       const offsetX = clientX - rect.left;
       const offsetY = clientY - rect.top;
-      // 转换为逻辑坐标（非 DPR 缩放后）
-      const x = Math.round((offsetX / rect.width) * logicalSize / CELL_SIZE);
-      const y = Math.round((offsetY / rect.height) * logicalSize / CELL_SIZE);
+      const logicalX = (offsetX / rect.width) * logicalSize;
+      const logicalY = (offsetY / rect.height) * logicalSize;
+
+      const x = Math.round((logicalX - PADDING) / CELL_SIZE);
+      const y = Math.round((logicalY - PADDING) / CELL_SIZE);
       return { x, y };
     }
 
     function drawBoard() {
       ctx.clearRect(0, 0, logicalSize, logicalSize);
 
-      // 网格
+      // 绘制网格线
       ctx.strokeStyle = '#8B4513';
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1;
       for (let i = 0; i < SIZE; i++) {
+        const pos = PADDING + i * CELL_SIZE;
+        // 横线
         ctx.beginPath();
-        ctx.moveTo(0, i * CELL_SIZE);
-        ctx.lineTo(logicalSize - 1, i * CELL_SIZE);
+        ctx.moveTo(PADDING, pos);
+        ctx.lineTo(PADDING + DRAW_SIZE, pos);
         ctx.stroke();
-
+        // 竖线
         ctx.beginPath();
-        ctx.moveTo(i * CELL_SIZE, 0);
-        ctx.lineTo(i * CELL_SIZE, logicalSize - 1);
+        ctx.moveTo(pos, PADDING);
+        ctx.lineTo(pos, PADDING + DRAW_SIZE);
         ctx.stroke();
       }
 
-      // 星位
+      // 9 个星位
       const stars = [3, 7, 11];
       ctx.fillStyle = '#000';
       for (let y of stars) {
         for (let x of stars) {
+          const cx = PADDING + x * CELL_SIZE;
+          const cy = PADDING + y * CELL_SIZE;
           ctx.beginPath();
-          ctx.arc(x * CELL_SIZE, y * CELL_SIZE, 2, 0, Math.PI * 2);
+          ctx.arc(cx, cy, 3, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -193,7 +201,7 @@
       }
 
       // 虚影
-      if (!gameOver && hoverX >= 0 && hoverY >= 0 && board[hoverY][hoverX] === 0) {
+      if (!gameOver && hoverX >= 0 && hoverY >= 0 && hoverX < SIZE && hoverY < SIZE && board[hoverY][hoverX] === 0) {
         if (currentPlayer === 1) {
           drawBlackPiece(hoverX, hoverY, 0.35);
         } else {
@@ -203,8 +211,8 @@
     }
 
     function drawBlackPiece(x, y, alpha = 1) {
-      const cx = x * CELL_SIZE;
-      const cy = y * CELL_SIZE;
+      const cx = PADDING + x * CELL_SIZE;
+      const cy = PADDING + y * CELL_SIZE;
       ctx.globalAlpha = alpha;
       const gradient = ctx.createRadialGradient(cx - 5, cy - 5, 1, cx, cy, RADIUS);
       gradient.addColorStop(0, '#555');
@@ -220,8 +228,8 @@
     }
 
     function drawWhitePiece(x, y, alpha = 1) {
-      const cx = x * CELL_SIZE;
-      const cy = y * CELL_SIZE;
+      const cx = PADDING + x * CELL_SIZE;
+      const cy = PADDING + y * CELL_SIZE;
       ctx.globalAlpha = alpha;
       const gradient = ctx.createRadialGradient(cx - 5, cy - 5, 1, cx, cy, RADIUS);
       gradient.addColorStop(0, '#fff');
@@ -265,11 +273,11 @@
 
     function drawWinLine(start, end) {
       ctx.strokeStyle = '#e74c3c';
-      ctx.lineWidth = 4;
-      ctx.setLineDash([10, 5]);
+      ctx.lineWidth = 3;
+      ctx.setLineDash([8, 4]);
       ctx.beginPath();
-      ctx.moveTo(start.x * CELL_SIZE, start.y * CELL_SIZE);
-      ctx.lineTo(end.x * CELL_SIZE, end.y * CELL_SIZE);
+      ctx.moveTo(PADDING + start.x * CELL_SIZE, PADDING + start.y * CELL_SIZE);
+      ctx.lineTo(PADDING + end.x * CELL_SIZE, PADDING + end.y * CELL_SIZE);
       ctx.stroke();
       ctx.setLineDash([]);
     }
@@ -284,14 +292,17 @@
       drawBoard();
     }
 
-    // ===== 统一处理鼠标和触摸事件 =====
-
     function handleMove(clientX, clientY) {
       if (gameOver) return;
       const { x, y } = getGridPos(clientX, clientY);
-      if (x !== hoverX || y !== hoverY) {
-        hoverX = x;
-        hoverY = y;
+      if (x >= 0 && x < SIZE && y >= 0 && y < SIZE) {
+        if (x !== hoverX || y !== hoverY) {
+          hoverX = x;
+          hoverY = y;
+          drawBoard();
+        }
+      } else if (hoverX !== -1 || hoverY !== -1) {
+        hoverX = hoverY = -1;
         drawBoard();
       }
     }
@@ -326,34 +337,26 @@
       info.textContent = `${currentPlayer === 1 ? '黑子' : '白子'}`;
     }
 
-    // 鼠标事件
     canvas.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
     canvas.addEventListener('mouseleave', handleLeave);
     canvas.addEventListener('click', (e) => handleClick(e.clientX, e.clientY));
 
-    // 触摸事件
+    canvas.addEventListener('touchstart', (e) => {}, { passive: true });
     canvas.addEventListener('touchmove', (e) => {
-      e.preventDefault();
       const touch = e.touches[0];
       handleMove(touch.clientX, touch.clientY);
-    }, { passive: false });
-
+    }, { passive: true });
     canvas.addEventListener('touchend', (e) => {
-      e.preventDefault();
       if (e.changedTouches.length > 0) {
         const touch = e.changedTouches[0];
         handleClick(touch.clientX, touch.clientY);
       }
-    }, { passive: false });
-
+    }, { passive: true });
     canvas.addEventListener('touchcancel', handleLeave);
 
     restartBtn.addEventListener('click', resetGame);
 
-    // 初始绘制
     drawBoard();
   </script>
 </body>
 </html>
-
-
